@@ -16,35 +16,41 @@
 - 使用 `cute::SM90_TMA_STORE` 将结果写回全局内存
 - TMA Store 与 TMA Load 的配合
 
-## Step 3: 异步事务屏障（Async Transaction Barrier / TMA Multicast）
+## Step 3: Swizzle — 共享内存 Bank Conflict 消除
+- 什么是 Bank Conflict 以及为什么需要 Swizzle
+- CuTe 中的 Swizzle 模板参数（`Swizzle<B, M, S>`）含义
+- TMA 与 Swizzle 的配合：SmemLayout 中应用 Swizzle
+- 对比有无 Swizzle 时的共享内存访问模式与性能差异
+
+## Step 4: 异步事务屏障（Async Transaction Barrier / TMA Multicast）
 - `cute::SM90_TMA_LOAD_MULTICAST` 多播加载
 - 异步屏障（`arrive` / `wait`）机制
 
-## Step 4: Cluster 与分布式共享内存（DSMEM）
+## Step 5: Cluster 与分布式共享内存（DSMEM）
 - Thread Block Cluster 概念
 - 跨 SM 的分布式共享内存读写
 
-## Step 5: WGMMA（Warp Group Matrix Multiply-Accumulate）
+## Step 6: WGMMA（Warp Group Matrix Multiply-Accumulate）
 - Warp Group 概念（4 个 Warp 协作）
 - 使用 `cute::SM90_64x128x16_F16F16F16_SS` 等 WGMMA 指令
 
-## Step 6: Pipeline 与多阶段异步流水线
+## Step 7: Pipeline 与多阶段异步流水线
 - 生产者-消费者模型
 - 多阶段（multi-stage）流水线：TMA Load → WGMMA Compute 重叠
 
-## Step 7: Warp Specialization（Warp 特化）
+## Step 8: Warp Specialization（Warp 特化）
 - 生产者 Warp 与消费者 Warp 的分工
 - `cute::ProducerWarp` / `cute::ConsumerWarp` 编程模式
 
-## Step 8: 持久化内核（Persistent Kernel）与 Tile Scheduler
+## Step 9: 持久化内核（Persistent Kernel）与 Tile Scheduler
 - 持久化内核的动机与实现
 - Tile Scheduler 的工作窃取（work stealing）策略
 
-## Step 9: FP8 数据类型支持
+## Step 10: FP8 数据类型支持
 - Hopper 原生 FP8（E4M3 / E5M2）支持
 - 使用 WGMMA 执行 FP8 矩阵乘法
 
-## Step 10: 综合实战 — 基于 CuTe 的高性能 GEMM
+## Step 11: 综合实战 — 基于 CuTe 的高性能 GEMM
 - 整合以上特性实现一个完整的 Hopper GEMM Kernel
 - 性能对比与调优要点
 
