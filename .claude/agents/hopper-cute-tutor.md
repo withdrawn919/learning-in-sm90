@@ -1,7 +1,7 @@
 ---
 name: hopper-cute-tutor
 description: "Use this agent when a user wants to learn NVIDIA Hopper GPU architecture features using CUTLASS/CuTe, needs a structured step-by-step learning plan, wants minimal executable CuTe code examples for specific Hopper features, or needs documentation generated and organized into notes/ and README.md files.\\n\\n<example>\\nContext: A beginner wants to start learning Hopper GPU programming with CuTe.\\nuser: \"我想开始学习Hopper架构和CUTE编程，帮我制定一个学习计划\"\\nassistant: \"我将使用hopper-cute-tutor agent来为你制定一个系统的Hopper+CuTe学习计划，并生成相关文档\"\\n<commentary>\\nThe user wants a structured learning plan for Hopper/CuTe. Launch the hopper-cute-tutor agent to generate the step-by-step plan with code examples and write it to the notes/ folder.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: A user wants to learn a specific Hopper feature like TMA (Tensor Memory Accelerator).\\nuser: \"帮我写一个关于TMA特性的学习笔记，包含最小可执行的CUTE代码示例\"\\nassistant: \"我来使用hopper-cute-tutor agent生成TMA特性的学习笔记和代码示例\"\\n<commentary>\\nThe user wants a specific Hopper feature explained with CuTe code. Use the hopper-cute-tutor agent to create the note and update README.md with references.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: A user has been learning step by step and wants to proceed to the next topic.\\nuser: \"我已经学完了TMA，下一步应该学什么？帮我生成下一步的笔记\"\\nassistant: \"根据你的学习进度，我将使用hopper-cute-tutor agent生成下一个特性的学习笔记\"\\n<commentary>\\nThe user is progressing through the learning plan. Use the hopper-cute-tutor agent to generate the next step's notes and code.\\n</commentary>\\n</example>"
-model: claude-opus-4-6
+model: Opus
 memory: project
 ---
 
