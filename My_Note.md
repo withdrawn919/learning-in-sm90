@@ -70,3 +70,154 @@ typedef __device_builtin__ struct cudaLaunchConfig_st {
   cutlass::Status status = cutlass::launch_kernel_on_cluster(const ClusterLaunchParams& params,
                                                              void const* kernel_ptr, Args&& ... args)
 ```
+# example
+```cuda-cpp
+#include <cstdio>
+#include <cuda_runtime.h>
+#include <cute/tensor.hpp>
+
+#include "cutlass/cluster_launch.hpp"
+
+#define CHECK_KERNEL() \
+    do { \
+        cudaError_t err = cudaGetLastError(); \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "[KERNEL LAUNCH ERROR] %s:%d | Code: %d | Msg: %s\n", \
+                    __FILE__, __LINE__, err, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+        err = cudaDeviceSynchronize(); \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "[KERNEL RUNTIME ERROR] %s:%d | Code: %d | Msg: %s\n", \
+                    __FILE__, __LINE__, err, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while(0)
+
+using namespace cute;
+
+__global__ __cluster_dims__(2, 3, 1)
+void cluster_rank_kernel() {
+    dim3 cdim    = cluster_grid_dims();
+    dim3 cid     = cluster_id_in_grid();
+    dim3 bid     = block_id_in_cluster();
+    dim3 c_shape = cluster_shape();
+    Uint32_t rank    = block_rank_in_cluster();
+
+    if(thread(0, 21)){
+        print("cdim :");    print(cdim);    print("\n");
+        print("cid :");     print(cid);     print("\n");
+        print("bid :");     print(bid);     print("\n");
+        print("c_shape :"); print(c_shape); print("\n");
+        print("rank :");    print(rank);    print("\n");
+    }
+}
+
+__global__
+void cudalaunch_kernel() {
+    dim3 cdim    = cluster_grid_dims();
+    dim3 cid     = cluster_id_in_grid();
+    dim3 bid     = block_id_in_cluster();
+    dim3 c_shape = cluster_shape();
+    Uint32_t rank    = block_rank_in_cluster();
+
+    if(thread(0, 21)){
+        print("cdim :");    print(cdim);    print("\n");
+        print("cid :");     print(cid);     print("\n");
+        print("bid :");     print(bid);     print("\n");
+        print("c_shape :"); print(c_shape); print("\n");
+        print("rank :");    print(rank);    print("\n");
+    }
+}
+
+int main() {
+    dim3 grid(8, 3, 1);
+    dim3 cluster(2, 1, 1);
+    dim3 block(1, 1, 1);
+
+    print("cluster_rank_kernel Launch \n");
+    cluster_rank_kernel<<<grid, block>>>();
+    CHECK_KERNEL();
+
+    auto kernel_ptr = &cudalaunch_kernel;
+    cutlass::ClusterLaunchParams params = {grid, block, cluster};
+    print("cudalaunch_kernel Launch \n");
+    cutlass::launch_kernel_on_cluster(params, (void const*)kernel_ptr);
+    cudaDeviceSynchronize();
+
+    return 0;
+}
+```
+![cluster](./pictures/cluster.png)
+# DSM（Distributed Shared Memory）
+
+# example
+```cuda-cpp
+#include <cstdio>
+#include <cuda_runtime.h>
+#include <cute/tensor.hpp>
+#include <cooperative_groups.h>
+
+#define CHECK_KERNEL() \
+    do { \
+        cudaError_t err = cudaGetLastError(); \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "[KERNEL LAUNCH ERROR] %s:%d | Code: %d | Msg: %s\n", \
+                    __FILE__, __LINE__, err, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+        err = cudaDeviceSynchronize(); \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "[KERNEL RUNTIME ERROR] %s:%d | Code: %d | Msg: %s\n", \
+                    __FILE__, __LINE__, err, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while(0)
+
+namespace cg = cooperative_groups;
+using namespace cute;
+
+__global__ __cluster_dims__(4, 1, 1)
+void dsm_sum_kernel() {
+    extern __shared__ int smem[];
+    auto cluster = cg::this_cluster();
+
+    uint32_t my_rank = block_rank_in_cluster();
+    dim3 cshape     = cluster_shape();
+
+    if (threadIdx.x == 0) {
+        smem[0] = (int)my_rank + 100;
+    }
+    cluster_sync();
+
+    if (thread(0, 7)) {
+        uint32_t local_smem_addr = cast_smem_ptr_to_uint(smem);
+        for (int r = 0; r < cshape.x * cshape.y * cshape.z; ++r) {
+            uint32_t remote_smem_addr = set_block_rank(local_smem_addr, r);
+            int* remote_ptr = (int*)__cvta_shared_to_generic(remote_smem_addr);
+            printf("block_rank_in_cluster: %d \t %p \n", r, remote_ptr);
+
+            uint32_t remote_val;
+            asm volatile (
+                "ld.shared::cluster.u32 %0, [%1];"
+                : "=r"(remote_val)
+                : "r"(remote_smem_addr)
+            );
+            printf("[PTX]: %d \t %d \n", r, remote_val);
+
+            auto cluster = cg::this_cluster();
+            int* remote = cluster.map_shared_rank(smem, r);
+            printf("[C G]: %d \t %d \n", r, remote[0]);
+        }
+    }
+    cluster_sync();
+}
+
+int main() {
+    dsm_sum_kernel<<<8, 1, sizeof(int)>>>();
+    CHECK_KERNEL();
+
+    return 0;
+}
+```
+![DSM](./pictures/DSM_result.png)
